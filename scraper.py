@@ -10,7 +10,10 @@ all_books = {}
 def parse_book_row(top_book, seen, category):
     info = top_book.find("td", {"class" : "summary"})
     title = info.find("span", {"class": "bookName"}).get_text().rstrip(", ").lower()
-    author = re.search("(?<=by ).*(?=. \()", info.get_text()).group(0)
+    try:
+        author = re.search("(?<=by ).*(?=. \()", info.get_text()).group(0)
+    except AttributeError:
+        author = "UNPARSEABLE"
     ranking = top_book.find("span", {"class": "ranking"}).get_text()
     if title in all_books.keys():
         all_books[title].update(seen, ranking)
@@ -18,12 +21,15 @@ def parse_book_row(top_book, seen, category):
         all_books[title] = Book(title, author, seen, ranking, category )
 
 def crawl_category_for_date(category, date):
-    response = requests.get("http://www.nytimes.com/best-sellers-books/{}/{}/list.html".format(date, category))
-    if response.status_code == 200:
-        raw_html = response.content
-        soup_html = BeautifulSoup(raw_html, "html.parser")
-        for top_book in soup_html.find_all("tr", {"class": "bookDetails"}):
-            parse_book_row(top_book, date, category)
+    try:
+        response = requests.get("http://www.nytimes.com/best-sellers-books/{}/{}/list.html".format(date, category))
+        if response.status_code == 200:
+            raw_html = response.content
+            soup_html = BeautifulSoup(raw_html, "html.parser")
+            for top_book in soup_html.find_all("tr", {"class": "bookDetails"}):
+                parse_book_row(top_book, date, category)
+    except Exception as e:
+        print("ERROR FETCHING FROM {} on {}:{}".format(category, date, e))
 
 
 def crawl_category(category):
